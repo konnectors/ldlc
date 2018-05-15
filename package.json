@@ -1,12 +1,16 @@
 {
-  "name": "cozy-konnector-template",
+  "name": "cozy-konnector-ldlc",
   "version": "1.0.0",
-  "description": "",
+  "description": "Fetch LDLC bills",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/konnectors/cozy-konnector-template.git"
+    "url": "git+https://github.com/konnectors/cozy-konnector-ldlc.git"
   },
-  "keywords": [],
+  "keywords": [
+    "cozy",
+    "ldlc",
+    "konnector"
+  ],
   "author": "Cozy Cloud",
   "license": "AGPL-3.0",
   "main": "./src/index.js",
@@ -32,6 +36,8 @@
     "travisDeployKey": "./bin/generate_travis_deploy_key"
   },
   "dependencies": {
+    "bluebird": "^3.5.1",
+    "cheerio": "^1.0.0-rc.2",
     "cozy-konnector-libs": "4.2.0"
   },
   "devDependencies": {
