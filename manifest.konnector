@@ -3,7 +3,7 @@
   "name": "Ldlc",
   "type": "konnector",
   "language": "node",
-  "icon": "icon.jpeg",
+  "icon": "icon.png",
   "slug": "ldlc",
   "source": "git://github.com/konnectors/ldlc.git",
   "editor": "Cozy",
