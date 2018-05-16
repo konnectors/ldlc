@@ -61,7 +61,7 @@ You can reach the Cozy Community by:
 License
 -------
 
-LDLC is developed by Cozy and distributed under the [AGPL v3 license][agpl-3.0].
+LDLC is developed by Cozy Cloud and distributed under the [AGPL v3 license][agpl-3.0].
 
 [cozy]: https://cozy.io "Cozy Cloud"
 [agpl-3.0]: https://www.gnu.org/licenses/agpl-3.0.html
