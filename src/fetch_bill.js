@@ -17,14 +17,19 @@ const monthes = [
   'décembre'
 ]
 
-function decodePrice(node) {
+function decodePrice(node, mandatory = false) {
   const asTring = node.text().trim()
   const matchFloat = asTring.match(/[\d,.]+/)
   let asFloat = 0
   if (matchFloat) {
     asFloat = matchFloat[0].replace(',', '.')
   } else {
-    log('info', `Could not parse float in ${asTring}`)
+    if (mandatory) {
+      log('warn', `Could not parse float in ${asTring}`)
+      throw new Error('BILL_WITHOUT_AMOUNT')
+    } else {
+      log('info', `Could not parse float in ${asTring}`)
+    }
   }
   return {
     asTring,
@@ -130,7 +135,8 @@ function fetchBill(ctx) {
       bottom_trs
         .eq(-2)
         .children('td')
-        .eq(2)
+        .eq(2),
+      true
     ),
     email,
     ...(hasPdf ? { pdf: { url: pdfUrl, filename: pdfFilename } } : {})
