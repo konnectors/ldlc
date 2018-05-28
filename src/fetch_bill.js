@@ -1,3 +1,4 @@
+const { log } = require('cozy-konnector-libs')
 const webroot = 'https://secure.ldlc.com'
 
 const monthes = [
@@ -16,16 +17,23 @@ const monthes = [
   'décembre'
 ]
 
-function decodePrice(node) {
+function decodePrice(node, mandatory = false) {
+  const asTring = node.text().trim()
+  const matchFloat = asTring.match(/[\d,.]+/)
+  let asFloat = 0
+  if (matchFloat) {
+    asFloat = matchFloat[0].replace(',', '.')
+  } else {
+    if (mandatory) {
+      log('warn', `Could not parse float in ${asTring}`)
+      throw new Error('BILL_WITHOUT_AMOUNT')
+    } else {
+      log('info', `Could not parse float in ${asTring}`)
+    }
+  }
   return {
-    asTring: node.text().trim(),
-    asFloat: parseFloat(
-      node
-        .text()
-        .trim()
-        .match(/[\d,.]+/)[0]
-        .replace(',', '.')
-    ),
+    asTring,
+    asFloat,
     currencyString: node
       .text()
       .replace(/[\d,.]+/, '')
@@ -85,6 +93,21 @@ function fetchBill(ctx) {
   if (!id || id.length == 0) {
     throw new Error(ctx.errors.UNKNOWN_ERROR)
   }
+
+  let email = bottom_trs
+    .eq(-1)
+    .find('.emailCommand')
+    .first()
+    .text()
+    .match(/\S+@\S+/)
+
+  if (email && email[0]) {
+    email = email[0]
+  } else {
+    log('info', `Could not parse email from ${bottom.html()}`)
+    email = ''
+  }
+
   const meta = {
     date: date,
     delivery: {
@@ -112,14 +135,10 @@ function fetchBill(ctx) {
       bottom_trs
         .eq(-2)
         .children('td')
-        .eq(2)
+        .eq(2),
+      true
     ),
-    email: bottom_trs
-      .eq(-1)
-      .find('.emailCommand')
-      .first()
-      .text()
-      .match(/\S+@\S+/)[0],
+    email,
     ...(hasPdf ? { pdf: { url: pdfUrl, filename: pdfFilename } } : {})
   }
   const products = productsCommand
