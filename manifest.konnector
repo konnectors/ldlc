@@ -7,7 +7,7 @@
   "slug": "ldlc",
   "source": "git://github.com/konnectors/ldlc.git",
   "editor": "Cozy",
-  "vendor_link": "https://ldlc.com",
+  "vendor_link": "https://www.ldlc.com",
   "categories": ["shopping"],
   "fields": {
     "login": {
