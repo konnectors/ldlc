@@ -1,6 +1,6 @@
 {
-  "name": "ldlc",
-  "version": "1.0.1",
+  "name": "cozy-konnector-ldlc",
+  "version": "1.0.2",
   "description": "Fetch LDLC bills",
   "repository": {
     "type": "git",
