@@ -3,12 +3,20 @@ const loginUrl = 'https://secure.ldlc.com/Account/LoginPage.aspx?redir=/'
 function authenticate(ctx) {
   ctx.debug('auth start')
   return requestLoginPage(ctx)
+    .then(validIp)
     .then(doLogin)
     .then(confirmAuthenticated)
 }
 
 function requestLoginPage(ctx) {
   return ctx.req({ url: loginUrl, ctx })
+}
+
+function validIp(ctx) {
+  if (ctx.page.html().includes('Votre Ip a &#xE9;t&#xE9; bannie')) {
+    throw new Error(ctx.errors.VENDOR_DOWN)
+  }
+  return ctx
 }
 
 function doLogin(ctx) {
