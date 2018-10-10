@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "name": "LDLC",
   "type": "konnector",
   "language": "node",
@@ -84,5 +84,6 @@
       }
     }
   },
+  "banksTransactionRegExp": "\\bldlc\\b",
   "manifest_version": "2"
 }
