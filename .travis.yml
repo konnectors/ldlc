@@ -1,0 +1,41 @@
+language: node_js
+node_js:
+- '8'
+env:
+  global:
+  - GH_USER_EMAIL="travis@example.org"
+  - GH_USER_NAME="cozy-bot"
+  - DEPLOY_REPOSITORY="git@github.com:konnectors/ldlc.git"
+  - secure: J04c8fDjcJ7ggJD8hBpc8DxfFusgZ9AZhSTDkTiouA4vlZU7YGZMD9u9+bFDzK3EgnpEi66FElkf2Bn9fhR70pe0zaCPn32QbO4bBUpIfBre9P6BNLEToLJONtJwNb+nUul/G40ZeYifunBddcckHEGlwJ0Of8i5e8IN6Pvc+8lWmn7fYrQWzDN/NuXElj0PgztQ/zUHHtGozcrUOYxIE+B2LHTrqt7h46DKrzIoA/LhIbD2LnUJVJkI13kZYEe0IxcHAEJFOpvMxC3o9Q+3DoHEAUnIAewVZd30FRPfN8kWecQo8kDz8pjJnLQIk5NV54VgCSMV5G3VjalXK42q+zKmXwped0Mp6tyJi0VmSkwSZRY12pZpkrwk3TuxzbjElSxIA0Uyi2fHFen3tWdhjpvV9q8YMENP36Jnfs0NDldAJE0wvlxYbpq3WqD+Cr5zum5mZ7rl360C/p8H4NlLPKql93qJlCSuEdlQK00YupIsmULnAt80QS0HHHBHEoQseAxgvr/O2xfM+4JxNeB44tnMRB6zeh+A32K+i7CNAkbNjRv+ArVvBowMd3tty+uQSx1UJGEpQGlBGXW8qUR4g6rVDnGfzixG3qHv6+bRgWOBPKmfhcACdnleT9oFsmAo5bsqVMLxqEd6KKgO0hgSw47h2pdIK2+sKyTuyv5+wY4=
+cache:
+  yarn: true
+  directories:
+  - node_modules
+branches:
+  except:
+  - build
+  - build-debug
+script:
+- yarn lint
+- yarn build
+# - yarn run check
+deploy:
+- provider: script
+  skip-cleanup: true
+  script: DEPLOY_BRANCH=build yarn deploy && yarn cozyPublish
+  on:
+    branch: master
+- provider: script
+  skip-cleanup: true
+  script: DEPLOY_BRANCH=build yarn deploy && yarn cozyPublish
+  on:
+    tags: true
+before_install:
+- openssl aes-256-cbc -K $encrypted_fb6daa2ffe39_key -iv $encrypted_fb6daa2ffe39_iv
+  -in github_deploy_key.enc -out /tmp/github_deploy_key -d
+- eval "$(ssh-agent -s)"
+- chmod 600 /tmp/github_deploy_key
+- ssh-add /tmp/github_deploy_key
+after_deploy:
+- rm /tmp/github_deploy_key
+- ssh-add -D

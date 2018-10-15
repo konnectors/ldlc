@@ -6,7 +6,7 @@
   "icon": "icon.png",
   "slug": "ldlc",
   "source": "git://github.com/konnectors/ldlc.git",
-  "editor": "Cozy Cloud",
+  "editor": "Cozy",
   "vendor_link": "https://ldlc.com",
   "categories": ["shopping"],
   "fields": {
