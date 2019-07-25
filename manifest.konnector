@@ -1,11 +1,11 @@
 {
-  "version": "1.1.1",
+  "version": "1.2.0",
   "name": "LDLC",
   "type": "konnector",
   "language": "node",
   "icon": "icon.svg",
   "slug": "ldlc",
-  "source": "git://github.com/konnectors/ldlc.git",
+  "source": "git@github.com:konnectors/ldlc.git",
   "editor": "Cozy",
   "vendor_link": "https://ldlc.com",
   "categories": [
