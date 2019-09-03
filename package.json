@@ -44,7 +44,7 @@
   "dependencies": {
     "bluebird": "3.5.5",
     "cheerio": "1.0.0-rc.3",
-    "cozy-konnector-libs": "4.24.2"
+    "cozy-konnector-libs": "4.26.0"
   },
   "devDependencies": {
     "copy-webpack-plugin": "4.6.0",
