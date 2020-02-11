@@ -3,7 +3,7 @@ node_js:
 - '12'
 env:
   global:
-  - DEPLOY_REPOSITORY="git@github.com:konnectors/ldlc.git"
+  # REGISTRY_TOKEN(editor=cozy, app=ldlc)
   - secure: J04c8fDjcJ7ggJD8hBpc8DxfFusgZ9AZhSTDkTiouA4vlZU7YGZMD9u9+bFDzK3EgnpEi66FElkf2Bn9fhR70pe0zaCPn32QbO4bBUpIfBre9P6BNLEToLJONtJwNb+nUul/G40ZeYifunBddcckHEGlwJ0Of8i5e8IN6Pvc+8lWmn7fYrQWzDN/NuXElj0PgztQ/zUHHtGozcrUOYxIE+B2LHTrqt7h46DKrzIoA/LhIbD2LnUJVJkI13kZYEe0IxcHAEJFOpvMxC3o9Q+3DoHEAUnIAewVZd30FRPfN8kWecQo8kDz8pjJnLQIk5NV54VgCSMV5G3VjalXK42q+zKmXwped0Mp6tyJi0VmSkwSZRY12pZpkrwk3TuxzbjElSxIA0Uyi2fHFen3tWdhjpvV9q8YMENP36Jnfs0NDldAJE0wvlxYbpq3WqD+Cr5zum5mZ7rl360C/p8H4NlLPKql93qJlCSuEdlQK00YupIsmULnAt80QS0HHHBHEoQseAxgvr/O2xfM+4JxNeB44tnMRB6zeh+A32K+i7CNAkbNjRv+ArVvBowMd3tty+uQSx1UJGEpQGlBGXW8qUR4g6rVDnGfzixG3qHv6+bRgWOBPKmfhcACdnleT9oFsmAo5bsqVMLxqEd6KKgO0hgSw47h2pdIK2+sKyTuyv5+wY4=
 cache:
   yarn: true
@@ -16,7 +16,6 @@ branches:
 script:
 - yarn lint
 - yarn build
-- yarn run check
 deploy:
 - provider: script
   skip-cleanup: true
