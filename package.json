@@ -43,7 +43,7 @@
   "dependencies": {
     "bluebird": "3.7.2",
     "cheerio": "1.0.0-rc.5",
-    "cozy-konnector-libs": "4.42.0"
+    "cozy-konnector-libs": "4.42.1"
   },
   "devDependencies": {
     "cozy-jobs-cli": "1.16.1",
