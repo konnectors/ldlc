@@ -1,20 +1,30 @@
 process.env.SENTRY_DSN =
   process.env.SENTRY_DSN ||
-  'https://7a8db33ca68247a9a969b7574445dedc:36a3a4fc5ebb479bae1850b6913b305d@sentry.cozycloud.cc/46'
+  'https://4238f8379a724aa5961c17001877f67a@errors.cozycloud.cc/32'
 
-const { BaseKonnector, requestFactory, log } = require('cozy-konnector-libs')
+const {
+  BaseKonnector,
+  requestFactory,
+  log,
+  cozyClient
+} = require('cozy-konnector-libs')
 const jar = require('request').jar()
 const cheerio = require('cheerio')
+
+const models = cozyClient.new.models
+const { Qualification } = models.document
 
 const requestHTML = requestFactory({
   debug: false,
   cheerio: true,
+  gzip: true,
   jar
 })
 
 const requestJSON = requestFactory({
   debug: false,
   json: true,
+  gzip: true,
   jar
 })
 
@@ -33,7 +43,6 @@ async function start(fields) {
   log('info', 'Fetching the list of documents')
   const bills = await getBills(ordersPeriods)
   log('info', 'Saving bills data to Cozy')
-  log('debug', bills)
   await this.saveBills(bills, fields, {
     identifiers: ['ldlc.com'],
     fileIdAttribute: ['vendorRef'],
@@ -45,22 +54,13 @@ async function start(fields) {
 
 async function authenticate(username, password) {
   await requestHTML({
-    url: 'https://www.ldlc.com/v4/fr-fr/form/login',
-    headers: {
-      'accept-encoding': 'gzip, deflate, br'
-    }
+    url: 'https://www.ldlc.com/v4/fr-fr/form/login'
   })
   await requestHTML({
-    url: 'https://secure2.ldlc.com/fr-fr/Account',
-    headers: {
-      'accept-encoding': 'gzip, deflate, br'
-    }
+    url: 'https://secure2.ldlc.com/fr-fr/Account'
   })
   await requestHTML({
-    url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
-    headers: {
-      'accept-encoding': 'gzip, deflate, br'
-    }
+    url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account'
   })
 
   const $ = await requestHTML({
@@ -71,23 +71,22 @@ async function authenticate(username, password) {
     'value'
   )
 
-  await requestJSON({
-    url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
-    method: 'POST',
-    formSelector: '#loginForm',
-    form: {
-      __RequestVerificationToken: `${reqVerifToken}`,
-      Email: username,
-      Password: password,
-      LongAuthenticationDuration: false
-    }
-  })
-    .catch(err => {
-      log('err', err)
+  try {
+    const resp = await requestJSON({
+      url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
+      method: 'POST',
+      formSelector: '#loginForm',
+      form: {
+        __RequestVerificationToken: `${reqVerifToken}`,
+        Email: username,
+        Password: password,
+        LongAuthenticationDuration: false
+      }
     })
-    .then(resp => {
-      return resp
-    })
+    return resp
+  } catch (err) {
+    log('err', err)
+  }
 }
 
 async function parseBills() {
@@ -99,7 +98,6 @@ async function parseBills() {
 }
 
 async function getBills(ordersPeriods) {
-  log('debug', ordersPeriods)
   let bills = []
   let orders = []
   let ordersByYear = []
@@ -112,22 +110,17 @@ async function getBills(ordersPeriods) {
         Value: ordersPeriods[i].Value
       }
     })
-    log('debug', ordersByPeriod.html())
     const splitOrders = Array.from(ordersByPeriod('div[class="order"]'))
-    log('debug', splitOrders)
     for (const div of splitOrders) {
       const $div = ordersByPeriod(div).html()
       ordersByYear.push($div)
     }
-    log('debug', ordersByYear)
   }
 
   for (let i = 0; i < ordersByYear.length; i++) {
     const $ = cheerio.load(ordersByYear[i])
     const orderHref = $('a[class="collapsed"]').attr('href')
-    log('debug', orderHref)
     const getOrderDate = $('.cell-date').text()
-    log('debug', getOrderDate)
     // Here we split the Date to get the right date format
     const splitOrderDate = getOrderDate.split('/')
     const orderDay = splitOrderDate[0]
@@ -140,7 +133,6 @@ async function getBills(ordersPeriods) {
       .html()
       .split(' ')[1]
       .match(/([0-9]*[A-Z]{1,2})/g)
-    log('debug', vendorRef)
     const getPrice = $('.cell-value')
     const trimPrice = getPrice.html().replace(' ', '')
     const numbers = trimPrice.match(/\d+/g)
@@ -158,7 +150,6 @@ async function getBills(ordersPeriods) {
     }
     orders.push(order)
   }
-  log('debug', orders)
   for (let i = 0; i < orders.length; i++) {
     let bill = {
       ...orders[i],
@@ -166,13 +157,17 @@ async function getBills(ordersPeriods) {
       currency: 'EUR',
       date: new Date(),
       requestOptions: {
-        method: 'GET',
         jar
       },
       fileAttributes: {
-        contentAuthor: 'ldlc.com',
-        datetime: new Date(orders[i].orderDate),
-        datetimeLabel: 'issueDate'
+        metadata: {
+          contentAuthor: 'ldlc.com',
+          issueDate: new Date(),
+          datetime: new Date(orders[i].orderDate),
+          datetimeLabel: `issueDate`,
+          carbonCopy: true,
+          qualification: Qualification.getByLabel('other_invoice')
+        }
       }
     }
     bills.push(bill)
