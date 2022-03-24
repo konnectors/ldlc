@@ -106,8 +106,8 @@ async function getBills(ordersPeriods) {
       url: 'https://secure2.ldlc.com/fr-fr/Orders/PartialCompletedOrdersHeader',
       method: 'POST',
       form: {
-        Duration: ordersPeriods[i].Duration,
-        Value: ordersPeriods[i].Value
+        duration: ordersPeriods[i].duration,
+        value: ordersPeriods[i].value
       }
     })
     const splitOrders = Array.from(ordersByPeriod('div[class="order"]'))
