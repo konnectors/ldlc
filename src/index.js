@@ -39,6 +39,12 @@ async function start(fields) {
   log('info', 'Successfully logged in')
   log('info', 'Fetching the list of bills')
   const ordersPeriods = await parseBills()
+  log(
+    'debug',
+    ordersPeriods
+      ? `Contains ${ordersPeriods.length} periods from parseBills`
+      : `No ordersPeriods founded from parseBills`
+  )
   log('info', 'Parsing list of bills')
   log('info', 'Fetching the list of documents')
   const bills = await getBills(ordersPeriods)
@@ -90,18 +96,57 @@ async function authenticate(username, password) {
 }
 
 async function parseBills() {
+  let getLimitedOrder = []
   const getOrders = await requestJSON({
     url: 'https://secure2.ldlc.com/fr-fr/Orders/CompletedOrdersPeriodSelection',
     method: 'POST'
   })
-  return getOrders
+  log('debug', 'First getOrders')
+  log('debug', getOrders)
+  log(
+    'debug',
+    getOrders
+      ? `getOrders is ${getOrders.length} long and of type ${typeof getOrders}`
+      : `No getOrders`
+  )
+  if (getOrders.length > 20) {
+    for (let i = 0; getOrders.length; i++) {
+      log('debug', `${i + 1} times in the loop`)
+      if (i === 20) {
+        break
+      } else if (getOrders === []) {
+        break
+      }
+      const limitedYear = getOrders.shift()
+      log(
+        'debug',
+        getOrders[0]
+          ? 'There is a getOrder, continue'
+          : 'There is no more getOrders, breaking'
+      )
+
+      getLimitedOrder.push(limitedYear)
+    }
+    log('debug', 'Returning limited to 20 years order list')
+    return getLimitedOrder
+  } else {
+    log('debug', 'Returning order list')
+    return getOrders
+  }
 }
 
 async function getBills(ordersPeriods) {
+  log(
+    'debug',
+    ordersPeriods
+      ? `Contains ${ordersPeriods.length} periods`
+      : `No ordersPeriods founded`
+  )
   let bills = []
   let orders = []
   let ordersByYear = []
   for (let i = 0; i < ordersPeriods.length; i++) {
+    log('debug', `Passing ${i} times in getBills loop`)
     const ordersByPeriod = await requestHTML({
       url: 'https://secure2.ldlc.com/fr-fr/Orders/PartialCompletedOrdersHeader',
       method: 'POST',
