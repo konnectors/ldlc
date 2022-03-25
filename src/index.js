@@ -6,7 +6,9 @@ const {
   BaseKonnector,
   requestFactory,
   log,
-  cozyClient
+  cozyClient,
+  solveCaptcha,
+  errors
 } = require('cozy-konnector-libs')
 const jar = require('request').jar()
 const cheerio = require('cheerio')
@@ -34,11 +36,16 @@ module.exports = new BaseKonnector(start)
 
 async function start(fields) {
   log('info', 'Authenticating ...')
+  const login = fields.login
+  const password = fields.password
 
-  await authenticate.bind(this)(fields.login, fields.password)
+  const reqVerifToken = await authenticate.bind(this)(
+    fields.login,
+    fields.password
+  )
   log('info', 'Successfully logged in')
   log('info', 'Fetching the list of bills')
-  const ordersPeriods = await parseBills()
+  const ordersPeriods = await parseBills(login, password, reqVerifToken)
   log(
     'debug',
     ordersPeriods
@@ -62,12 +69,6 @@ async function authenticate(username, password) {
   await requestHTML({
     url: 'https://www.ldlc.com/v4/fr-fr/form/login'
   })
-  await requestHTML({
-    url: 'https://secure2.ldlc.com/fr-fr/Account'
-  })
-  await requestHTML({
-    url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account'
-  })
 
   const $ = await requestHTML({
     url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
@@ -76,59 +77,52 @@ async function authenticate(username, password) {
   const reqVerifToken = $('input[name="__RequestVerificationToken"]').attr(
     'value'
   )
-
-  try {
-    const resp = await requestJSON({
-      url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
-      method: 'POST',
-      formSelector: '#loginForm',
-      form: {
-        __RequestVerificationToken: `${reqVerifToken}`,
-        Email: username,
-        Password: password,
-        LongAuthenticationDuration: false
-      }
-    })
-    return resp
-  } catch (err) {
-    log('err', err)
+  const resp = await requestJSON({
+    url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
+    method: 'POST',
+    formSelector: '#loginForm',
+    form: {
+      __RequestVerificationToken: `${reqVerifToken}`,
+      Email: username,
+      Password: password,
+      LongAuthenticationDuration: false
+    }
+  })
+  if (resp.match(/href="\/fr-fr\/Account\/Logout/g)) {
+    log('debug', 'Login successful, sending OK to cozy-libs')
+    return reqVerifToken
+  }
+  if (resp.match(/<title>Connexion<\/title>/g)) {
+    if (resp.match(/renderCaptcha/g)) {
+      log('debug', 'Login failed, trying with captcha')
+      await nextAuth(username, password, reqVerifToken)
+    } else if (resp.match(/Identifiants incorrects/g)) {
+      log('debug', 'Something went wrong with your credentials')
+      throw new Error(errors.LOGIN_FAILED)
+    } else {
+      log('debug', 'Something went wrong with the website')
+      throw new Error(errors.VENDOR_DOWN)
+    }
   }
 }
 
-async function parseBills() {
-  let getLimitedOrder = []
+async function parseBills(login, password, reqVerifToken) {
   const getOrders = await requestJSON({
     url: 'https://secure2.ldlc.com/fr-fr/Orders/CompletedOrdersPeriodSelection',
     method: 'POST'
   })
   log('debug', 'First getOrders')
-  log('debug', getOrders)
   log(
     'debug',
     getOrders
       ? `getOrders is ${getOrders.length} long and of type ${typeof getOrders}`
       : `No getOrders`
   )
-  if (getOrders.length > 20) {
-    for (let i = 0; getOrders.length; i++) {
-      log('debug', `${i + 1} times in the loop`)
-      if (i === 20) {
-        break
-      } else if (getOrders === []) {
-        break
-      }
-      const limitedYear = getOrders.shift()
-      log(
-        'debug',
-        getOrders[0]
-          ? 'There is a getOrder, continue'
-          : 'There is no more getOrders, breaking'
-      )
-
-      getLimitedOrder.push(limitedYear)
+  if (typeof getOrders === 'string') {
+    for (let i = 0; i < 1; i++) {
+      await nextAuth(login, password, reqVerifToken)
+      await parseBills()
     }
-    log('debug', 'Returning limited to 20 years order list')
-    return getLimitedOrder
   } else {
     log('debug', 'Returning order list')
     return getOrders
@@ -218,4 +212,35 @@ async function getBills(ordersPeriods) {
     bills.push(bill)
   }
   return bills
+}
+
+async function nextAuth(login, password, reqVerifToken) {
+  log('debug', 'Trying to authenticate with captcha')
+
+  const gRecaptchaResponse = await solveCaptcha({
+    websiteKey: '6LdgbxgUAAAAAHvdiswvziUz_XecIWb1sWTW7pnz',
+    websiteURL: 'https://www.ldlc.com/'
+  })
+  const resp = await requestJSON({
+    url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
+    method: 'POST',
+    formSelector: '#loginForm',
+    form: {
+      __RequestVerificationToken: `${reqVerifToken}`,
+      Email: login,
+      Password: password,
+      LongAuthenticationDuration: false,
+      'g-recaptcha-response': gRecaptchaResponse
+    }
+  })
+  if (resp.match(/Identifiants incorrects/g)) {
+    log('debug', 'Something went wrong with your credentials')
+    throw new Error(errors.LOGIN_FAILED)
+  } else if (resp.match(/href="\/fr-fr\/Account\/Logout/g)) {
+    log('debug', 'Login successful, continue')
+    return resp
+  } else {
+    log('debug', 'Something went wrong with the website')
+    throw new Error(errors.VENDOR_DOWN)
+  }
 }
