@@ -125,16 +125,23 @@ async function parseBills() {
 }
 
 async function getBills(ordersPeriods) {
+  log(
+    'debug',
+    ordersPeriods
+      ? `Contains ${ordersPeriods.length} periods`
+      : `No ordersPeriods founded`
+  )
   let bills = []
   let orders = []
   let ordersByYear = []
   for (let i = 0; i < ordersPeriods.length; i++) {
+    log('debug', `Passing ${i} times in getBills loop`)
     const ordersByPeriod = await requestHTML({
       url: 'https://secure2.ldlc.com/fr-fr/Orders/PartialCompletedOrdersHeader',
       method: 'POST',
       form: {
-        Duration: ordersPeriods[i].Duration,
-        Value: ordersPeriods[i].Value
+        duration: ordersPeriods[i].duration,
+        value: ordersPeriods[i].value
       }
     })
     const splitOrders = Array.from(ordersByPeriod('div[class="order"]'))
