@@ -36,16 +36,11 @@ module.exports = new BaseKonnector(start)
 
 async function start(fields) {
   log('info', 'Authenticating ...')
-  const login = fields.login
-  const password = fields.password
 
-  const reqVerifToken = await authenticate.bind(this)(
-    fields.login,
-    fields.password
-  )
+  await authenticate.bind(this)(fields.login, fields.password)
   log('info', 'Successfully logged in')
   log('info', 'Fetching the list of bills')
-  const ordersPeriods = await parseBills(login, password, reqVerifToken)
+  const ordersPeriods = await parseBills()
   log(
     'debug',
     ordersPeriods
@@ -67,9 +62,8 @@ async function start(fields) {
 
 async function authenticate(username, password) {
   await requestHTML({
-    url: 'https://www.ldlc.com/v4/fr-fr/form/login'
+    url: `https://secure2.ldlc.com/fr-fr/Login/PartialCaptchaByIpOrEmail?email=${username}`
   })
-
   const $ = await requestHTML({
     url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
     headers: { 'x-requested-with': 'XMLHttpRequest' }
@@ -77,6 +71,15 @@ async function authenticate(username, password) {
   const reqVerifToken = $('input[name="__RequestVerificationToken"]').attr(
     'value'
   )
+  if (!reqVerifToken) {
+    throw new Error(
+      'There is no verification token, cannot connect the account'
+    )
+  }
+  const gRecaptcha = await solveCaptcha({
+    websiteKey: '6LdgbxgUAAAAAHvdiswvziUz_XecIWb1sWTW7pnz',
+    websiteURL: 'https://www.ldlc.com/'
+  })
   const resp = await requestJSON({
     url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
     method: 'POST',
@@ -85,7 +88,8 @@ async function authenticate(username, password) {
       __RequestVerificationToken: `${reqVerifToken}`,
       Email: username,
       Password: password,
-      LongAuthenticationDuration: false
+      LongAuthenticationDuration: false,
+      'g-recaptcha-response': gRecaptcha
     }
   })
   if (resp.match(/href="\/fr-fr\/Account\/Logout/g)) {
@@ -93,10 +97,7 @@ async function authenticate(username, password) {
     return reqVerifToken
   }
   if (resp.match(/<title>Connexion<\/title>/g)) {
-    if (resp.match(/renderCaptcha/g)) {
-      log('debug', 'Login failed, trying with captcha')
-      await nextAuth(username, password, reqVerifToken)
-    } else if (resp.match(/Identifiants incorrects/g)) {
+    if (resp.match(/Identifiants incorrects/g)) {
       log('debug', 'Something went wrong with your credentials')
       throw new Error(errors.LOGIN_FAILED)
     } else {
@@ -106,7 +107,7 @@ async function authenticate(username, password) {
   }
 }
 
-async function parseBills(login, password, reqVerifToken) {
+async function parseBills() {
   const getOrders = await requestJSON({
     url: 'https://secure2.ldlc.com/fr-fr/Orders/CompletedOrdersPeriodSelection',
     method: 'POST'
@@ -118,15 +119,9 @@ async function parseBills(login, password, reqVerifToken) {
       ? `getOrders is ${getOrders.length} long and of type ${typeof getOrders}`
       : `No getOrders`
   )
-  if (typeof getOrders === 'string') {
-    for (let i = 0; i < 1; i++) {
-      await nextAuth(login, password, reqVerifToken)
-      await parseBills()
-    }
-  } else {
-    log('debug', 'Returning order list')
-    return getOrders
-  }
+
+  log('debug', 'Returning order list')
+  return getOrders
 }
 
 async function getBills(ordersPeriods) {
@@ -212,35 +207,4 @@ async function getBills(ordersPeriods) {
     bills.push(bill)
   }
   return bills
-}
-
-async function nextAuth(login, password, reqVerifToken) {
-  log('debug', 'Trying to authenticate with captcha')
-
-  const gRecaptchaResponse = await solveCaptcha({
-    websiteKey: '6LdgbxgUAAAAAHvdiswvziUz_XecIWb1sWTW7pnz',
-    websiteURL: 'https://www.ldlc.com/'
-  })
-  const resp = await requestJSON({
-    url: 'https://secure2.ldlc.com/fr-fr/Login/Login?returnUrl=/fr-fr/Account',
-    method: 'POST',
-    formSelector: '#loginForm',
-    form: {
-      __RequestVerificationToken: `${reqVerifToken}`,
-      Email: login,
-      Password: password,
-      LongAuthenticationDuration: false,
-      'g-recaptcha-response': gRecaptchaResponse
-    }
-  })
-  if (resp.match(/Identifiants incorrects/g)) {
-    log('debug', 'Something went wrong with your credentials')
-    throw new Error(errors.LOGIN_FAILED)
-  } else if (resp.match(/href="\/fr-fr\/Account\/Logout/g)) {
-    log('debug', 'Login successful, continue')
-    return resp
-  } else {
-    log('debug', 'Something went wrong with the website')
-    throw new Error(errors.VENDOR_DOWN)
-  }
 }
