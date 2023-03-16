@@ -53,7 +53,7 @@ async function start(fields) {
   log('info', 'Saving bills data to Cozy')
   await this.saveBills(bills, fields, {
     identifiers: ['ldlc.com'],
-    fileIdAttribute: ['vendorRef'],
+    fileIdAttributes: ['vendorRef'],
     sourceAccount: fields.login,
     sourceAccountIdentifier: fields.login,
     contentType: 'application/pdf'
